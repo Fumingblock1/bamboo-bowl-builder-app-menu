@@ -1,0 +1,132 @@
+from flask import Flask, request
+import urllib.parse
+
+app = Flask(__name__)
+
+menu_steps = [
+    {"title": "Step 1 - Craft your Base", "name": "base", "items": {"Garlic fried rice": 17.90, "Steamed rice": 17.90, "Quinoa mix": 19.90, "Noodles": 17.90, "Udon": 30.90, "Forbidden Rice": 20.90, "None": 0.00}, "multi": True},
+    {"title": "Step 2 - Pick your Protein", "name": "protein", "items": {"Falafel": 12.90, "Venison": 23.90, "Pichana steak": 29.90, "Tofu": 17.90, "Salmon": 70.90, "Prawns": 40.90, "Pork belly": 30.90, "Tuna": 45.90, "Chicken": 17.90, "Duck": 40.90, "None": 0.00}, "multi": True},
+    {"title": "Step 3 - Select your Greens", "name": "greens", "items": {"Seasonal veg": 17.90, "Greens": 18.90, "Baby veg": 18.90, "Exotic mushrooms": 21.90, "Stir fry veg": 17.90, "Red veg": 18.90, "None": 0.00}, "multi": True},
+    {"title": "Step 4 - Drizzle your Delight", "name": "drizzle", "items": {"Sweet chilli": 12.90, "Chimichurri": 12.90, "Japanese mayo": 20.90, "Orange sauce": 12.90, "Lemon peri peri": 12.90, "Sweet and sour": 12.90, "Satay": 12.90, "Teriyaki": 12.90, "Thai green curry": 12.90, "Tonkatsu": 12.90, "None": 0.00}, "multi": True},
+    {"title": "Step 5 - Muscle up your Bowl", "name": "muscle", "items": {"Chilli": 4.90, "Fried onion": 9.90, "Egg": 8.90, "Avocado": 11.90, "Mango": 10.90, "Pineapple": 10.90, "Chick peas": 11.90, "Cashew": 16.90, "Gochujang": 18.90, "None": 0.00}, "multi": True},
+    {"title": "Step 6 - Quench your Thirst", "name": "drink", "items": {"Coke": 18.90, "Fanta": 18.90, "Coke zero": 19.90, "Coke light": 19.90, "Mountain falls": 24.90, "Steri stumpi": 25.90, "Fruticana": 19.90, "None": 0.00}, "multi": False},
+    {"title": "Step 7 - Sweet Tooth", "name": "sweet", "items": {"Churros + Chocolate Sauce": 49.90, "Churros + Caramel Sauce": 49.90, "Churros + Milkybar Sauce": 49.90, "None": 0.00}, "multi": False}
+]
+
+@app.route('/', methods=['GET', 'POST'])
+def home():
+    if request.method == 'POST':
+        name = request.form.get('customer_name', 'Customer').strip() or "Customer"
+        total = 0.0
+        msg_parts = [f"🌿 New Bamboo Order: {name} 🌿\n"]
+        has_items = False
+        
+        for i in range(10):
+            b_items, b_total = [], 0.0
+            for step in menu_steps:
+                field = f"{step['name']}[]" if i == 0 else f"{step['name']}[{i}][]"
+                selected = request.form.getlist(field)
+                for item in selected:
+                    if item != "None" and item in step["items"]:
+                        price = step["items"][item]
+                        b_items.append(f"• {item} (R{price:.2f})")
+                        b_total += price
+            if b_items:
+                has_items = True
+                msg_parts.append(f"--- BOWL {i+1} ---")
+                msg_parts.extend(b_items)
+                msg_parts.append(f"Subtotal: R{b_total:.2f}\n")
+                total += b_total
+
+        if has_items:
+            msg_parts.append(f"GRAND TOTAL: R{total:.2f}")
+            encoded_message = urllib.parse.quote("\n".join(msg_parts))
+            wa_url = f"https://wa.me/27678081176?text={encoded_message}"
+            
+            return f"""
+            <body style="background:#000; color:#fff; font-family:sans-serif; text-align:center; padding:50px 20px;">
+                <h1 style="color:#4caf50;">Order Summary</h1>
+                <div style="background:#111; padding:20px; border-radius:15px; border:1px solid #333; margin-bottom:30px; text-align:left; display:inline-block; min-width:300px;">
+                    <p>Customer: <strong>{name}</strong></p>
+                    <p>Total: <strong style="color:#4caf50; font-size:24px;">R{total:.2f}</strong></p>
+                </div>
+                <br>
+                <a href="{wa_url}" style="display:block; max-width:400px; margin:auto; padding:25px; background:#4caf50; color:#fff; text-decoration:none; border-radius:15px; font-weight:bold; font-size:22px; box-shadow: 0 10px 20px rgba(0,0,0,0.5);">
+                    CONFIRM & SEND ORDER ➔
+                </a>
+                <p style="margin-top:20px; color:#666;">Clicking above will open WhatsApp safely.</p>
+                <a href="/" style="color:#aaa; text-decoration:none; display:inline-block; margin-top:20px;">Wait, I want to change my order</a>
+            </body>
+            """
+        return "<h2>No items selected.</h2><a href='/'>Go back</a>"
+
+    # Template builder
+    tpl = ""
+    for s in menu_steps:
+        itype = "checkbox" if s["multi"] else "radio"
+        opts = "".join([f'<label><input type="{itype}" name="{s["name"]}[ID][]" value="{x}"> {x} (R{p:.2f})</label>' for x, p in s["items"].items()])
+        tpl += f'<div class="step"><h3>{s["title"]}</h3>{opts}</div>'
+
+    return fr"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Bamboo Bowl</title>
+        <style>
+            body {{ background: #000; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }}
+            .container {{ max-width: 500px; margin: auto; }}
+            .bowl-section {{ background: #111; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px solid #333; }}
+            .step {{ border-bottom: 1px solid #222; padding: 10px 0; }}
+            h3 {{ color: #4caf50; margin: 0 0 5px 0; font-size: 1rem; }}
+            label {{ display: block; padding: 10px 0; color: #bbb; cursor: pointer; }}
+            input {{ transform: scale(1.2); margin-right: 12px; }}
+            .btn {{ width: 100%; padding: 16px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }}
+            .btn-add {{ background: #222; color: #4caf50; border: 1px solid #4caf50; margin-bottom: 10px; }}
+            .btn-submit {{ background: #4caf50; color: #fff; font-size: 18px; }}
+            .btn-remove {{ background: #ff4d4d; color: #fff; width: auto; padding: 5px 10px; float: right; font-size: 12px; }}
+            .name-input {{ width: 100%; padding: 16px; background: #111; border: 1px solid #333; color: #fff; border-radius: 10px; box-sizing: border-box; margin-bottom: 25px; font-size: 18px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1 style="color:#4caf50; text-align:center;">🌿 Bamboo Bowl</h1>
+            <form method="post">
+                <input type="text" name="customer_name" class="name-input" placeholder="Your Name" required>
+                <div id="bowl-container">
+                    <div class="bowl-section" id="bowl-0">
+                        <h2 style="color:#4caf50; margin-top:0;">Bowl #1</h2>
+                        {tpl.replace('[ID]', '')}
+                    </div>
+                </div>
+                <button type="button" class="btn btn-add" onclick="addBowl()">+ Add Another Bowl</button>
+                <button type="submit" class="btn btn-submit">Place Order ➔</button>
+            </form>
+        </div>
+        <script>
+            let count = 1;
+            function addBowl() {{
+                const container = document.getElementById('bowl-container');
+                const div = document.createElement('div');
+                div.className = 'bowl-section';
+                div.id = 'bowl-' + count;
+                let inner = `{tpl}`;
+                div.innerHTML = `<button type="button" class="btn btn-remove" onclick="rm(${{count}})">Remove</button>` + 
+                                `<h2 style="color:#4caf50; margin-top:0;">Bowl #${{count + 1}}</h2>` + 
+                                inner.replace(/\[ID\]/g, '[' + count + ']');
+                container.appendChild(div);
+                count++;
+                window.scrollTo({{ top: document.body.scrollHeight, behavior: 'smooth' }});
+            }}
+            function rm(id) {{ document.getElementById('bowl-' + id).remove(); }}
+        </script>
+    </body>
+    </html>
+    """
+
+import os
+
+if __name__ == '__main__':
+    print("Starting Bamboo menu...")
+    port = int(os.environ.get("PORT", 5000))  # Render uses PORT env var
+    app.run(debug=False, host='0.0.0.0', port=port)
