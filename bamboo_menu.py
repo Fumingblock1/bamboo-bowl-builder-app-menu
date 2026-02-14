@@ -72,7 +72,7 @@ def home():
     <html>
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Bamboo Bowl</title>
+        <title>Bamboo Bowls</title>
         <style>
             body {{ background: #000; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }}
             .container {{ max-width: 500px; margin: auto; }}
@@ -129,4 +129,5 @@ import os
 if __name__ == '__main__':
     print("Starting Bamboo menu...")
     port = int(os.environ.get("PORT", 5000))  # Render uses PORT env var
+
     app.run(debug=False, host='0.0.0.0', port=port)
