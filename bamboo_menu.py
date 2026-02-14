@@ -1,7 +1,50 @@
+<div style="width: 160px">
+<h6 style="
+margin: 10px 0;
+padding: 0;
+font-family: roboto-regular, sans-serif;
+font-size: 14px;
+color: #1d1d1b;
+">Bamboo Bowls</h6>
+
+<a href="https://pay.ikhokha.com/bamboo-bowls/buy/bamboobowls" style="text-decoration: none">
+<div
+style="
+overflow: hidden;
+display: flex;
+justify-content: center;
+align-items: center;
+width: 100%;
+height: 48px;
+background: #0BB3BF;
+color: #FFFFFF;
+border: 1px solid #e5e5e5;
+box-shadow: 1px solid #e5e5e5;
+border-radius: 16px;
+font-family: roboto-medium, sans-serif;
+font-weight: 700;
+"
+> 
+PayNow
+</div>
+</a>
+<h6
+style="
+margin: 5px 0;
+padding: 0;
+font-size: 8px;
+font-family: roboto-regular, sans-serif;
+text-align: center;
+"
+> 
+Poweredby iKhokha
+</h6>
+</div>
+
 from flask import Flask, request
 import urllib.parse
 
-app = Flask(__name__)
+app = Flask(_name_)
 
 menu_steps = [
     {"title": "Step 1 - Craft your Base", "name": "base", "items": {"Garlic fried rice": 17.90, "Steamed rice": 17.90, "Quinoa mix": 19.90, "Noodles": 17.90, "Udon": 30.90, "Forbidden Rice": 20.90, "None": 0.00}, "multi": True},
@@ -110,9 +153,9 @@ def home():
                 const div = document.createElement('div');
                 div.className = 'bowl-section';
                 div.id = 'bowl-' + count;
-                let inner = `{tpl}`;
-                div.innerHTML = `<button type="button" class="btn btn-remove" onclick="rm(${{count}})">Remove</button>` + 
-                                `<h2 style="color:#4caf50; margin-top:0;">Bowl #${{count + 1}}</h2>` + 
+                let inner = {tpl};
+                div.innerHTML = <button type="button" class="btn btn-remove" onclick="rm(${{count}})">Remove</button> + 
+                                <h2 style="color:#4caf50; margin-top:0;">Bowl #${{count + 1}}</h2> + 
                                 inner.replace(/\[ID\]/g, '[' + count + ']');
                 container.appendChild(div);
                 count++;
@@ -126,9 +169,8 @@ def home():
 
 import os
 
-if __name__ == '__main__':
+if _name_ == '_main_':
     print("Starting Bamboo menu...")
     port = int(os.environ.get("PORT", 5000))  # Render uses PORT env var
 
     app.run(debug=False, host='0.0.0.0', port=port)
-
