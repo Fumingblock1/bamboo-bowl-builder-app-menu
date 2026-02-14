@@ -90,7 +90,7 @@ def home():
     </head>
     <body>
         <div class="container">
-            <h1 style="color:#4caf50; text-align:center;">🌿 Bamboo Bowl</h1>
+            <h1 style="color:#4caf50; text-align:center;">🌿 Bamboo Bowls</h1>
             <form method="post">
                 <input type="text" name="customer_name" class="name-input" placeholder="Your Name" required>
                 <div id="bowl-container">
@@ -131,3 +131,4 @@ if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))  # Render uses PORT env var
 
     app.run(debug=False, host='0.0.0.0', port=port)
+
