@@ -100,7 +100,12 @@ def home():
     tpl = ""
     for s in menu_steps:
         itype = "checkbox" if s["multi"] else "radio"
-        opts = "".join([f'<label><input type="{itype}" name="{s["name"]}[ID][]" value="{x}"> {x} (R{p:.2f})</label><br>' for x, p in s["items"].items()])
+        opts = ""
+        for x, p in s["items"].items():
+            # Try multiple image extensions
+            img_path = f"/static/images/{x}.jpg.png"
+            img_tag = f'<img src="{img_path}" alt="{x}" class="item-img" onerror="this.style.display=\'none\'">' if x != "None" else ''
+            opts += f'<label class="item-label">{img_tag}<span class="item-text"><input type="{itype}" name="{s["name"]}[ID][]" value="{x}"> {x} (R{p:.2f})</span></label>'
         tpl += f'<div class="step"><h3>{s["title"]}</h3>{opts}</div>'
 
     return f"""
@@ -114,9 +119,12 @@ def home():
             .container {{ max-width: 500px; margin: auto; }}
             .bowl-section {{ background: #111; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px solid #333; }}
             .step {{ border-bottom: 1px solid #222; padding: 10px 0; }}
-            h3 {{ color: #4caf50; margin: 0 0 5px 0; font-size: 1rem; }}
-            label {{ display: block; padding: 8px 0; color: #bbb; cursor: pointer; }}
-            input {{ transform: scale(1.2); margin-right: 12px; }}
+            h3 {{ color: #4caf50; margin: 0 0 10px 0; font-size: 1rem; }}
+            .item-label {{ display: flex; align-items: center; padding: 8px 0; color: #bbb; cursor: pointer; transition: background 0.2s; border-radius: 8px; padding: 8px; }}
+            .item-label:hover {{ background: #1a1a1a; }}
+            .item-img {{ width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin-right: 12px; border: 2px solid #333; }}
+            .item-text {{ flex: 1; display: flex; align-items: center; }}
+            input[type="checkbox"], input[type="radio"] {{ transform: scale(1.2); margin-right: 12px; }}
             .btn {{ width: 100%; padding: 16px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }}
             .btn-add {{ background: #222; color: #4caf50; border: 1px solid #4caf50; margin-bottom: 10px; }}
             .btn-submit {{ background: #4caf50; color: #fff; font-size: 18px; }}
