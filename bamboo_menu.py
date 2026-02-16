@@ -1,5 +1,6 @@
 from flask import Flask, request
 import urllib.parse
+import os
 
 app = Flask(__name__)
 
@@ -38,36 +39,71 @@ def home():
                 msg_parts.append(f"Subtotal: R{b_total:.2f}\n")
                 total += b_total
 
-        if has_items:
-            msg_parts.append(f"GRAND TOTAL: R{total:.2f}")
-            encoded_message = urllib.parse.quote("\n".join(msg_parts))
-            wa_url = f"https://wa.me/27678081176?text={encoded_message}"
-            
-            return f"""
-            <body style="background:#000; color:#fff; font-family:sans-serif; text-align:center; padding:50px 20px;">
-                <h1 style="color:#4caf50;">Order Summary</h1>
-                <div style="background:#111; padding:20px; border-radius:15px; border:1px solid #333; margin-bottom:30px; text-align:left; display:inline-block; min-width:300px;">
-                    <p>Customer: <strong>{name}</strong></p>
-                    <p>Total: <strong style="color:#4caf50; font-size:24px;">R{total:.2f}</strong></p>
-                </div>
-                <br>
-                <a href="{wa_url}" style="display:block; max-width:400px; margin:auto; padding:25px; background:#4caf50; color:#fff; text-decoration:none; border-radius:15px; font-weight:bold; font-size:22px; box-shadow: 0 10px 20px rgba(0,0,0,0.5);">
-                    CONFIRM & SEND ORDER ➔
-                </a>
-                <p style="margin-top:20px; color:#666;">Clicking above will open WhatsApp safely.</p>
-                <a href="/" style="color:#aaa; text-decoration:none; display:inline-block; margin-top:20px;">Wait, I want to change my order</a>
-            </body>
-            """
-        return "<h2>No items selected.</h2><a href='/'>Go back</a>"
+        if not has_items:
+            return "<h2>No items selected.</h2><a href='/'>Go back</a>"
 
-    # Template builder
+        grand_total = f"R{total:.2f}"
+
+        # iKhokha Pay Button - REPLACE THIS URL with your real one from iKhokha dashboard
+        ik_pay_button = f"""
+        <div style="width: 160px; margin: 30px auto; text-align: center;">
+            <h6 style="margin: 10px 0; padding: 0; font-family: roboto-regular, sans-serif; font-size: 14px; color: #1d1d1b;">
+                Bamboo Bowls
+            </h6>
+            <a href="https://pay.ikhokha.com/bamboo-bowls/buy/bamboobowls" style="text-decoration: none;">
+                <div style="overflow: hidden; display: flex; justify-content: center; align-items: center; width: 100%; height: 48px; background: #0BB3BF; color: #FFFFFF; border: 1px solid #e5e5e5; box-shadow: 1px solid #e5e5e5; border-radius: 16px; font-family: roboto-medium, sans-serif; font-weight: 700;">
+                    Pay Now {grand_total}
+                </div>
+            </a>
+            <h6 style="margin: 5px 0; padding: 0; font-size: 8px; font-family: roboto-regular, sans-serif; text-align: center;">
+                Powered by iKhokha
+            </h6>
+        </div>
+        """
+
+        encoded_message = urllib.parse.quote("\n".join(msg_parts))
+        wa_url = f"https://wa.me/27678081176?text={encoded_message}"
+
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Order Summary - Bamboo Bowls</title>
+            <style>
+                body {{ background:#000; color:#fff; font-family:sans-serif; text-align:center; padding:50px 20px; }}
+                .summary {{ background:#111; padding:25px; border-radius:15px; border:1px solid #333; margin:20px auto; max-width:500px; text-align:left; }}
+                .btn {{ display:block; max-width:400px; margin:20px auto; padding:20px; background:#4caf50; color:#fff; text-decoration:none; border-radius:15px; font-weight:bold; font-size:22px; box-shadow:0 10px 20px rgba(0,0,0,0.5); }}
+            </style>
+        </head>
+        <body>
+            <h1 style="color:#4caf50;">Order Summary</h1>
+            <div class="summary">
+                <p>Customer: <strong>{name}</strong></p>
+                <p>Total: <strong style="color:#4caf50; font-size:28px;">{grand_total}</strong></p>
+                <hr style="border-color:#333;">
+                <pre style="white-space: pre-wrap; color:#ccc;">{"\n".join(msg_parts)}</pre>
+            </div>
+
+            {ik_pay_button}
+
+            <a href="{wa_url}" class="btn">CONFIRM & SEND ORDER VIA WHATSAPP ➔</a>
+
+            <p style="margin-top:30px; color:#888;">
+                <a href="/" style="color:#aaa; text-decoration:none;">← Change my order</a>
+            </p>
+        </body>
+        </html>
+        """
+
+    # GET - form builder
     tpl = ""
     for s in menu_steps:
         itype = "checkbox" if s["multi"] else "radio"
-        opts = "".join([f'<label><input type="{itype}" name="{s["name"]}[ID][]" value="{x}"> {x} (R{p:.2f})</label>' for x, p in s["items"].items()])
+        opts = "".join([f'<label><input type="{itype}" name="{s["name"]}[ID][]" value="{x}"> {x} (R{p:.2f})</label><br>' for x, p in s["items"].items()])
         tpl += f'<div class="step"><h3>{s["title"]}</h3>{opts}</div>'
 
-    return fr"""
+    return f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -79,7 +115,7 @@ def home():
             .bowl-section {{ background: #111; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px solid #333; }}
             .step {{ border-bottom: 1px solid #222; padding: 10px 0; }}
             h3 {{ color: #4caf50; margin: 0 0 5px 0; font-size: 1rem; }}
-            label {{ display: block; padding: 10px 0; color: #bbb; cursor: pointer; }}
+            label {{ display: block; padding: 8px 0; color: #bbb; cursor: pointer; }}
             input {{ transform: scale(1.2); margin-right: 12px; }}
             .btn {{ width: 100%; padding: 16px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }}
             .btn-add {{ background: #222; color: #4caf50; border: 1px solid #4caf50; margin-bottom: 10px; }}
@@ -100,7 +136,7 @@ def home():
                     </div>
                 </div>
                 <button type="button" class="btn btn-add" onclick="addBowl()">+ Add Another Bowl</button>
-                <button type="submit" class="btn btn-submit">Place Order ➔</button>
+                <button type="submit" class="btn btn-submit">Review & Pay ➔</button>
             </form>
         </div>
         <script>
@@ -113,7 +149,7 @@ def home():
                 let inner = `{tpl}`;
                 div.innerHTML = `<button type="button" class="btn btn-remove" onclick="rm(${{count}})">Remove</button>` + 
                                 `<h2 style="color:#4caf50; margin-top:0;">Bowl #${{count + 1}}</h2>` + 
-                                inner.replace(/\[ID\]/g, '[' + count + ']');
+                                inner.replace(/\\[ID\\]/g, '[' + count + ']');
                 container.appendChild(div);
                 count++;
                 window.scrollTo({{ top: document.body.scrollHeight, behavior: 'smooth' }});
@@ -124,10 +160,7 @@ def home():
     </html>
     """
 
-import os
-
 if __name__ == '__main__':
     print("Starting Bamboo menu...")
-    port = int(os.environ.get("PORT", 5000))  # Render uses PORT env var
-
+    port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
