@@ -5,10 +5,10 @@ import os
 app = Flask(__name__)
 
 menu_steps = [
-    {"title": "Step 1 - Craft your Base", "name": "base", "items": {"Garlic fried rice": 17.90, "Steamed rice": 17.90, "Quinoa mix": 19.90, "Noodles": 17.90, "Udon": 30.90, "Forbidden Rice": 20.90, "None": 0.00}, "multi": True},
+    {"title": "Step 1 - Craft your Base", "name": "base", "items": {"Garlic fried rice": 17.90, "Steamed rice": 17.90, "Quinoa mix": 19.90, "Noodles": 17.90, "Udon": 30.90, "Forbidden rice": 20.90, "None": 0.00}, "multi": True},
     {"title": "Step 2 - Pick your Protein", "name": "protein", "items": {"Falafel": 12.90, "Venison": 23.90, "Pichana steak": 29.90, "Tofu": 17.90, "Salmon": 70.90, "Prawns": 40.90, "Pork belly": 30.90, "Tuna": 45.90, "Chicken": 17.90, "Duck": 40.90, "None": 0.00}, "multi": True},
     {"title": "Step 3 - Select your Greens", "name": "greens", "items": {"Seasonal veg": 17.90, "Greens": 18.90, "Baby veg": 18.90, "Exotic mushrooms": 21.90, "Stir fry veg": 17.90, "Red veg": 18.90, "None": 0.00}, "multi": True},
-    {"title": "Step 4 - Drizzle your Delight", "name": "drizzle", "items": {"Sweet chilli": 12.90, "Chimichurri": 12.90, "Japanese mayo": 20.90, "Orange sauce": 12.90, "Lemon peri peri": 12.90, "Sweet and sour": 12.90, "Satay": 12.90, "Teriyaki": 12.90, "Thai green curry": 12.90, "Tonkatsu": 12.90, "None": 0.00}, "multi": True},
+    {"title": "Step 4 - Drizzle your Delight", "name": "drizzle", "items": {"Sweet chiili": 12.90, "Chimichurri": 12.90, "Japanese mayo": 20.90, "Orange sauce": 12.90, "Lemon peri peri": 12.90, "Sweet and sour": 12.90, "Satay": 12.90, "Teriyaki": 12.90, "Thai green curry": 12.90, "Tonkatsu": 12.90, "None": 0.00}, "multi": True},
     {"title": "Step 5 - Muscle up your Bowl", "name": "muscle", "items": {"Chilli": 4.90, "Fried onion": 9.90, "Egg": 8.90, "Avocado": 11.90, "Mango": 10.90, "Pineapple": 10.90, "Chick peas": 11.90, "Cashew": 16.90, "Gochujang": 18.90, "None": 0.00}, "multi": True},
     {"title": "Step 6 - Quench your Thirst", "name": "drink", "items": {"Coke": 18.90, "Fanta": 18.90, "Coke zero": 19.90, "Coke light": 19.90, "Mountain falls": 24.90, "Steri stumpi": 25.90, "Fruticana": 19.90, "None": 0.00}, "multi": True},
     {"title": "Step 7 - Sweet Tooth", "name": "sweet", "items": {"Churros + Chocolate Sauce": 49.90, "Churros + Caramel Sauce": 49.90, "Churros + Milkybar Sauce": 49.90, "None": 0.00}, "multi": True}
@@ -102,7 +102,7 @@ def home():
         opts = ""
         for x, p in s["items"].items():
             if x != "None":
-                img_tag = f'<img src="/static/images/{x}.png" alt="{x}" class="item-img" onerror="this.style.display=\'none\'">'
+                img_tag = f'<img src="/static/images/{x}.jpg.png" alt="{x}" class="item-img" onerror="this.src=\'/static/images/{x}.jpg.jpg\';this.onerror=function(){{this.style.display=\'none\'}}">'
             else:
                 img_tag = ''
             opts += f'<label class="item-label">{img_tag}<span class="item-text"><input type="{itype}" name="{s["name"]}[ID][]" value="{x}"> {x} (R{p:.2f})</span></label>'
