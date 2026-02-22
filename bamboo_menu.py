@@ -4,6 +4,15 @@ import os
 
 app = Flask(__name__)
 
+signature_bowls = [
+    {"name": "Lemon Peri-Peri Calamari on Forbidden Rice", "price": 94.90},
+    {"name": "Thai Green Veg Bowl on Quinoa", "price": 71.90},
+    {"name": "Orange Duck & Red Veg on Noodles", "price": 99.90},
+    {"name": "Sweet and Sour Pichana Steak on Udon", "price": 89.90},
+    {"name": "Tonkatsu Tofu & Cashew Fried Rice", "price": 79.90},
+    {"name": "Satay Pork on Garlic Fried Rice", "price": 89.90},
+]
+
 menu_steps = [
     {"title": "Step 1 - Craft your Base", "name": "base", "items": {"Garlic fried rice": 17.90, "Steamed rice": 17.90, "Quinoa mix": 19.90, "Noodles": 17.90, "Udon": 30.90, "Forbidden rice": 20.90, "None": 0.00}, "multi": True},
     {"title": "Step 2 - Pick your Protein", "name": "protein", "items": {"Falafel": 12.90, "Venison": 23.90, "Pichana steak": 29.90, "Tofu": 17.90, "Salmon": 70.90, "Prawns": 40.90, "Pork belly": 30.90, "Tuna": 45.90, "Chicken": 17.90, "Duck": 40.90, "None": 0.00}, "multi": True},
@@ -21,7 +30,19 @@ def home():
         total = 0.0
         msg_parts = [f"🌿 New Bamboo Order: {name} 🌿\n"]
         has_items = False
-        
+
+        # Handle signature bowls
+        selected_sigs = request.form.getlist('signature[]')
+        for sig_name in selected_sigs:
+            sig = next((s for s in signature_bowls if s["name"] == sig_name), None)
+            if sig:
+                has_items = True
+                msg_parts.append(f"--- SIGNATURE BOWL ---")
+                msg_parts.append(f"• {sig['name']} (R{sig['price']:.2f})")
+                msg_parts.append(f"Subtotal: R{sig['price']:.2f}\n")
+                total += sig['price']
+
+        # Handle build-your-own bowls
         for i in range(10):
             b_items, b_total = [], 0.0
             for step in menu_steps:
@@ -81,7 +102,7 @@ def home():
                 <p>Customer: <strong>{name}</strong></p>
                 <p>Total: <strong style="color:#4caf50; font-size:28px;">{grand_total}</strong></p>
                 <hr style="border-color:#333;">
-                <pre style="white-space: pre-wrap; color:#ccc;">{"\n".join(msg_parts)}</pre>
+                <pre style="white-space: pre-wrap; color:#ccc;">{chr(10).join(msg_parts)}</pre>
             </div>
 
             {ik_pay_button}
@@ -108,6 +129,20 @@ def home():
             opts += f'<label class="item-label">{img_tag}<span class="item-text"><input type="{itype}" name="{s["name"]}[ID][]" value="{x}"> {x} (R{p:.2f})</span></label>'
         tpl += f'<div class="step"><h3>{s["title"]}</h3>{opts}</div>'
 
+    # Signature bowls HTML
+    sig_html = ""
+    for sig in signature_bowls:
+        img_tag = f'<img src="/static/images/{sig["name"]}.jpg.png" alt="{sig["name"]}" class="sig-img" onerror="this.src=\'/static/images/{sig["name"]}.jpg.jpg\';this.onerror=function(){{this.style.display=\'none\'}}">'
+        sig_html += f'''
+        <label class="sig-label">
+            <input type="checkbox" name="signature[]" value="{sig["name"]}">
+            {img_tag}
+            <span class="sig-text">
+                <strong>{sig["name"]}</strong><br>
+                <span style="color:#4caf50;">R{sig["price"]:.2f}</span>
+            </span>
+        </label>'''
+
     return f"""
     <!DOCTYPE html>
     <html>
@@ -118,6 +153,14 @@ def home():
             body {{ background: #000; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }}
             .container {{ max-width: 500px; margin: auto; }}
             .bowl-section {{ background: #111; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px solid #333; }}
+            .sig-section {{ background: #111; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px solid #4caf50; }}
+            .sig-section h2 {{ color: #4caf50; margin-top: 0; text-align: center; font-size: 1.4rem; }}
+            .sig-label {{ display: flex; align-items: center; padding: 10px 8px; color: #bbb; cursor: pointer; border-radius: 8px; transition: background 0.2s; border-bottom: 1px solid #222; }}
+            .sig-label:hover {{ background: #1a1a1a; }}
+            .sig-label:last-child {{ border-bottom: none; }}
+            .sig-img {{ width: 80px; height: 80px; object-fit: cover; border-radius: 10px; margin: 0 14px 0 10px; border: 2px solid #4caf50; flex-shrink: 0; }}
+            .sig-text {{ flex: 1; font-size: 0.95rem; line-height: 1.4; }}
+            .sig-label input[type="checkbox"] {{ transform: scale(1.3); margin-right: 4px; flex-shrink: 0; }}
             .step {{ border-bottom: 1px solid #222; padding: 10px 0; }}
             h3 {{ color: #4caf50; margin: 0 0 10px 0; font-size: 1rem; }}
             .item-label {{ display: flex; align-items: center; padding: 8px; color: #bbb; cursor: pointer; transition: background 0.2s; border-radius: 8px; }}
@@ -130,6 +173,7 @@ def home():
             .btn-submit {{ background: #4caf50; color: #fff; font-size: 18px; }}
             .btn-remove {{ background: #ff4d4d; color: #fff; width: auto; padding: 5px 10px; float: right; font-size: 12px; border: none; border-radius: 6px; cursor: pointer; }}
             .name-input {{ width: 100%; padding: 16px; background: #111; border: 1px solid #333; color: #fff; border-radius: 10px; box-sizing: border-box; margin-bottom: 25px; font-size: 18px; }}
+            .divider {{ text-align: center; color: #555; margin: 20px 0; font-size: 14px; letter-spacing: 2px; }}
         </style>
     </head>
     <body>
@@ -137,6 +181,16 @@ def home():
             <h1 style="color:#4caf50; text-align:center;">🌿 Bamboo Bowls</h1>
             <form method="post">
                 <input type="text" name="customer_name" class="name-input" placeholder="Your Name" required>
+
+                <!-- SIGNATURE BOWLS -->
+                <div class="sig-section">
+                    <h2>⭐ Signature Bowls</h2>
+                    {sig_html}
+                </div>
+
+                <div class="divider">── OR BUILD YOUR OWN ──</div>
+
+                <!-- BUILD YOUR OWN -->
                 <div id="bowl-container">
                     <div class="bowl-section" id="bowl-0">
                         <h2 style="color:#4caf50; margin-top:0;">Bowl #1</h2>
