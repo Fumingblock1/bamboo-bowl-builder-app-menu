@@ -44,7 +44,6 @@ def home():
 
         grand_total = f"R{total:.2f}"
 
-        # iKhokha Pay Button - REPLACE THIS URL with your real one from iKhokha dashboard
         ik_pay_button = f"""
         <div style="width: 160px; margin: 30px auto; text-align: center;">
             <h6 style="margin: 10px 0; padding: 0; font-family: roboto-regular, sans-serif; font-size: 14px; color: #1d1d1b;">
@@ -102,9 +101,10 @@ def home():
         itype = "checkbox" if s["multi"] else "radio"
         opts = ""
         for x, p in s["items"].items():
-            # Try multiple image extensions
-            img_path = f"/static/images/{x}.jpg.png"
-            img_tag = f'<img src="{img_path}" alt="{x}" class="item-img" onerror="this.style.display=\'none\'">' if x != "None" else ''
+            if x != "None":
+                img_tag = f'<img src="/static/images/{x}.png" alt="{x}" class="item-img" onerror="this.style.display=\'none\'">'
+            else:
+                img_tag = ''
             opts += f'<label class="item-label">{img_tag}<span class="item-text"><input type="{itype}" name="{s["name"]}[ID][]" value="{x}"> {x} (R{p:.2f})</span></label>'
         tpl += f'<div class="step"><h3>{s["title"]}</h3>{opts}</div>'
 
@@ -120,15 +120,15 @@ def home():
             .bowl-section {{ background: #111; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px solid #333; }}
             .step {{ border-bottom: 1px solid #222; padding: 10px 0; }}
             h3 {{ color: #4caf50; margin: 0 0 10px 0; font-size: 1rem; }}
-            .item-label {{ display: flex; align-items: center; padding: 8px 0; color: #bbb; cursor: pointer; transition: background 0.2s; border-radius: 8px; padding: 8px; }}
+            .item-label {{ display: flex; align-items: center; padding: 8px; color: #bbb; cursor: pointer; transition: background 0.2s; border-radius: 8px; }}
             .item-label:hover {{ background: #1a1a1a; }}
-            .item-img {{ width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin-right: 12px; border: 2px solid #333; }}
+            .item-img {{ width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin-right: 12px; border: 2px solid #333; flex-shrink: 0; }}
             .item-text {{ flex: 1; display: flex; align-items: center; }}
             input[type="checkbox"], input[type="radio"] {{ transform: scale(1.2); margin-right: 12px; }}
             .btn {{ width: 100%; padding: 16px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }}
             .btn-add {{ background: #222; color: #4caf50; border: 1px solid #4caf50; margin-bottom: 10px; }}
             .btn-submit {{ background: #4caf50; color: #fff; font-size: 18px; }}
-            .btn-remove {{ background: #ff4d4d; color: #fff; width: auto; padding: 5px 10px; float: right; font-size: 12px; }}
+            .btn-remove {{ background: #ff4d4d; color: #fff; width: auto; padding: 5px 10px; float: right; font-size: 12px; border: none; border-radius: 6px; cursor: pointer; }}
             .name-input {{ width: 100%; padding: 16px; background: #111; border: 1px solid #333; color: #fff; border-radius: 10px; box-sizing: border-box; margin-bottom: 25px; font-size: 18px; }}
         </style>
     </head>
