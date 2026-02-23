@@ -12,7 +12,7 @@ app.secret_key = os.environ.get("FLASK_SECRET", "bamboo-bowls-secret-2024")
 
 IKHOKHA_APP_ID = os.environ.get("IKHOKHA_APP_ID")
 IKHOKHA_SECRET_KEY = os.environ.get("IKHOKHA_SECRET_KEY")
-IKHOKHA_API_URL = "https://api.ikhokha.com/v1/paylink"
+IKHOKHA_API_URL = "https://api.ikhokha.com/public-api/v1/api/payment"
 
 signature_bowls = [
     {"name": "Lemon Peri-Peri Calamari on Forbidden Rice", "price": 94.90},
@@ -33,7 +33,7 @@ menu_steps = [
     {"title": "Step 7 - Sweet Tooth", "name": "sweet", "items": {"Churros + Chocolate Sauce": 49.90, "Churros + Caramel Sauce": 49.90, "Churros + Milkybar Sauce": 49.90, "None": 0.00}, "multi": True}
 ]
 
-def create_ikhokha_payment(amount_rands, order_summary, transaction_id):
+def create_ikhokha_payment(amount_rands, transaction_id, description):
     amount_cents = int(round(amount_rands * 100))
     base_url = os.environ.get("BASE_URL", "https://bamboo-bowls.co.za")
 
@@ -43,28 +43,42 @@ def create_ikhokha_payment(amount_rands, order_summary, transaction_id):
         "currency": "ZAR",
         "requesterUrl": base_url,
         "mode": "live",
+        "description": description,
         "externalTransactionID": transaction_id,
         "urls": {
+            "callbackUrl": f"{base_url}/callback",
             "successPageUrl": f"{base_url}/success?tid={transaction_id}",
             "failurePageUrl": f"{base_url}/failed",
             "cancelUrl": f"{base_url}/",
         }
     }
 
-    payload_str = json.dumps(payload, separators=(',', ':'))
+    request_body_str = json.dumps(payload, separators=(',', ':'))
+
+    # Build signature exactly as per iKhokha docs:
+    # IK-SIGN = hash_hmac("sha256", path + requestBody, AppSecret)
+    # path = /public-api/v1/api/payment
+    api_path = "/public-api/v1/api/payment"
+
+    # Escape the payload the same way iKhokha's Python example does
+    payload_to_sign = api_path + request_body_str
+    payload_to_sign = payload_to_sign.replace('"', '\\"').replace(': ', ':').replace(', ', ',')
+
     signature = hmac.new(
-        IKHOKHA_SECRET_KEY.encode(),
-        payload_str.encode(),
+        IKHOKHA_SECRET_KEY.encode('utf-8'),
+        payload_to_sign.encode('utf-8'),
         hashlib.sha256
     ).hexdigest()
 
     headers = {
         "Content-Type": "application/json",
-        "ApplicationId": IKHOKHA_APP_ID,
-        "Signature": signature
+        "IK-APPID": IKHOKHA_APP_ID,
+        "IK-SIGN": signature
     }
 
-    response = requests.post(IKHOKHA_API_URL, json=payload, headers=headers, timeout=10)
+    response = requests.post(IKHOKHA_API_URL, data=request_body_str, headers=headers, timeout=10)
+    print(f"iKhokha response status: {response.status_code}")
+    print(f"iKhokha response body: {response.text}")
     return response.json()
 
 @app.route('/', methods=['GET', 'POST'])
@@ -106,27 +120,31 @@ def home():
             return "<h2>No items selected.</h2><a href='/'>Go back</a>"
 
         msg_parts.append(f"TOTAL: R{total:.2f}")
+        full_msg = "\n".join(msg_parts)
         transaction_id = str(uuid.uuid4())
+
         session[transaction_id] = {
             "name": name,
-            "msg": "\n".join(msg_parts),
+            "msg": full_msg,
             "total": f"R{total:.2f}"
         }
 
         try:
-            result = create_ikhokha_payment(total, "\n".join(msg_parts), transaction_id)
+            result = create_ikhokha_payment(total, transaction_id, f"Bamboo Bowls order for {name}")
             pay_url = result.get("paylinkUrl")
             if pay_url:
                 return redirect(pay_url)
+            else:
+                print(f"No paylinkUrl in response: {result}")
         except Exception as e:
             print(f"iKhokha API error: {e}")
 
-        # Fallback if API fails
-        encoded_message = urllib.parse.quote("\n".join(msg_parts))
+        # Fallback to WhatsApp if payment link fails
+        encoded_message = urllib.parse.quote(full_msg)
         wa_url = f"https://wa.me/27678081176?text={encoded_message}"
         return redirect(f"/summary?wa={urllib.parse.quote(wa_url)}&tid={transaction_id}")
 
-    # GET
+    # GET - build the form
     tpl = ""
     for s in menu_steps:
         itype = "checkbox" if s["multi"] else "radio"
@@ -262,6 +280,39 @@ def home():
     </html>
     """
 
+@app.route('/summary')
+def summary():
+    tid = request.args.get('tid', '')
+    wa = request.args.get('wa', '')
+    order = session.get(tid, {})
+    name = order.get('name', 'Customer')
+    msg = order.get('msg', '')
+    total = order.get('total', '')
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Order Summary - Bamboo Bowls</title>
+        <style>
+            body {{ background:#000; color:#fff; font-family:sans-serif; text-align:center; padding:40px 20px; }}
+            .card {{ background:#111; padding:25px; border-radius:15px; border:1px solid #333; margin:20px auto; max-width:500px; text-align:left; }}
+            .btn {{ display:block; max-width:400px; margin:20px auto; padding:20px; background:#4caf50; color:#fff; text-decoration:none; border-radius:15px; font-weight:bold; font-size:20px; text-align:center; }}
+        </style>
+    </head>
+    <body>
+        <h1 style="color:#4caf50;">Order Summary</h1>
+        <p style="color:#aaa;">Customer: <strong>{name}</strong> | Total: <strong style="color:#4caf50;">{total}</strong></p>
+        <div class="card">
+            <pre style="white-space: pre-wrap; color:#ccc; font-size:14px;">{msg}</pre>
+        </div>
+        <a href="{urllib.parse.unquote(wa)}" class="btn">SEND ORDER VIA WHATSAPP ➔</a>
+        <p style="margin-top:20px;"><a href="/" style="color:#888;">← Back to menu</a></p>
+    </body>
+    </html>
+    """
+
 @app.route('/success')
 def success():
     tid = request.args.get('tid', '')
@@ -296,6 +347,13 @@ def success():
     </body>
     </html>
     """
+
+@app.route('/callback', methods=['POST'])
+def callback():
+    # iKhokha webhook - just log it for now
+    data = request.get_json()
+    print(f"iKhokha callback received: {data}")
+    return '', 200
 
 @app.route('/failed')
 def failed():
