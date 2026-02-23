@@ -1,18 +1,12 @@
 from flask import Flask, request, redirect, session
 import urllib.parse
 import os
-import requests
-import hashlib
-import hmac
 import uuid
-import json
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET", "bamboo-bowls-secret-2024")
 
-IKHOKHA_APP_ID = os.environ.get("IKHOKHA_APP_ID")
-IKHOKHA_SECRET_KEY = os.environ.get("IKHOKHA_SECRET_KEY")
-IKHOKHA_API_URL = "https://api.ikhokha.com/public-api/v1/api/payment"
+IKHOKHA_PAY_URL = "https://pay.ikhokha.com/bamboo-bowls/buy/bamboobowls"
 
 signature_bowls = [
     {"name": "Lemon Peri-Peri Calamari on Forbidden Rice", "price": 94.90},
@@ -33,51 +27,6 @@ menu_steps = [
     {"title": "Step 7 - Sweet Tooth", "name": "sweet", "items": {"Churros + Chocolate Sauce": 49.90, "Churros + Caramel Sauce": 49.90, "Churros + Milkybar Sauce": 49.90, "None": 0.00}, "multi": True}
 ]
 
-def create_ikhokha_payment(amount_rands, transaction_id, description):
-    amount_cents = int(round(amount_rands * 100))
-    base_url = os.environ.get("BASE_URL", "https://bamboo-bowls.co.za")
-
-    payload = {
-        "entityID": IKHOKHA_APP_ID,
-        "amount": amount_cents,
-        "currency": "ZAR",
-        "requesterUrl": base_url,
-        "mode": "live",
-        "description": description,
-        "externalTransactionID": transaction_id,
-        "urls": {
-            "callbackUrl": f"{base_url}/callback",
-            "successPageUrl": f"{base_url}/success?tid={transaction_id}",
-            "failurePageUrl": f"{base_url}/failed",
-            "cancelUrl": f"{base_url}/",
-        }
-    }
-
-    request_body_str = json.dumps(payload)
-
-    # Build signature exactly as per iKhokha Python example:
-    # IK-SIGN = hash_hmac("sha256", path + requestBody, AppSecret)
-    api_path = "/public-api/v1/api/payment"
-    payload_to_sign = api_path + request_body_str
-    # Escape quotes and remove spaces after colons/commas as per iKhokha docs
-    payload_to_sign = payload_to_sign.replace('"', '\\"').replace(': ', ':').replace(', ', ',')
-
-    signature = hmac.new(
-        IKHOKHA_SECRET_KEY.encode('utf-8'),
-        payload_to_sign.encode('utf-8'),
-        hashlib.sha256
-    ).hexdigest()
-
-    headers = {
-        "Content-Type": "application/json",
-        "IK-APPID": IKHOKHA_APP_ID,
-        "IK-SIGN": signature
-    }
-
-    response = requests.post(IKHOKHA_API_URL, data=request_body_str, headers=headers, timeout=10)
-    print(f"iKhokha response status: {response.status_code}")
-    print(f"iKhokha response body: {response.text}")
-    return response.json()
 @app.route('/', methods=['GET', 'POST'])
 def home():
     if request.method == 'POST':
@@ -118,30 +67,13 @@ def home():
 
         msg_parts.append(f"TOTAL: R{total:.2f}")
         full_msg = "\n".join(msg_parts)
-        transaction_id = str(uuid.uuid4())
-
-        session[transaction_id] = {
+        tid = str(uuid.uuid4())
+        session[tid] = {
             "name": name,
             "msg": full_msg,
             "total": f"R{total:.2f}"
         }
-
-        try:
-            result = create_ikhokha_payment(total, transaction_id, f"Bamboo Bowls order for {name}")
-            pay_url = result.get("paylinkUrl")
-            if pay_url:
-                return redirect(pay_url)
-            else:
-                print(f"No paylinkUrl in response: {result}")
-        except Exception as e:
-            import traceback
-            print(f"iKhokha API error: {e}")
-            print(traceback.format_exc())
-
-        # Fallback to WhatsApp if payment link fails
-        encoded_message = urllib.parse.quote(full_msg)
-        wa_url = f"https://wa.me/27678081176?text={encoded_message}"
-        return redirect(f"/summary?wa={urllib.parse.quote(wa_url)}&tid={transaction_id}")
+        return redirect(f"/checkout?tid={tid}")
 
     # GET - build the form
     tpl = ""
@@ -229,7 +161,7 @@ def home():
 
                 <div class="total-bar" id="totalBar">Total: R0.00</div>
 
-                <button type="submit" class="btn btn-submit">💳 Pay Now ➔</button>
+                <button type="submit" class="btn btn-submit">Review Order ➔</button>
             </form>
         </div>
         <script>
@@ -279,46 +211,16 @@ def home():
     </html>
     """
 
-@app.route('/summary')
-def summary():
+@app.route('/checkout')
+def checkout():
     tid = request.args.get('tid', '')
-    wa = request.args.get('wa', '')
     order = session.get(tid, {})
+    if not order:
+        return redirect('/')
+
     name = order.get('name', 'Customer')
     msg = order.get('msg', '')
     total = order.get('total', '')
-
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Order Summary - Bamboo Bowls</title>
-        <style>
-            body {{ background:#000; color:#fff; font-family:sans-serif; text-align:center; padding:40px 20px; }}
-            .card {{ background:#111; padding:25px; border-radius:15px; border:1px solid #333; margin:20px auto; max-width:500px; text-align:left; }}
-            .btn {{ display:block; max-width:400px; margin:20px auto; padding:20px; background:#4caf50; color:#fff; text-decoration:none; border-radius:15px; font-weight:bold; font-size:20px; text-align:center; }}
-        </style>
-    </head>
-    <body>
-        <h1 style="color:#4caf50;">Order Summary</h1>
-        <p style="color:#aaa;">Customer: <strong>{name}</strong> | Total: <strong style="color:#4caf50;">{total}</strong></p>
-        <div class="card">
-            <pre style="white-space: pre-wrap; color:#ccc; font-size:14px;">{msg}</pre>
-        </div>
-        <a href="{urllib.parse.unquote(wa)}" class="btn">SEND ORDER VIA WHATSAPP ➔</a>
-        <p style="margin-top:20px;"><a href="/" style="color:#888;">← Back to menu</a></p>
-    </body>
-    </html>
-    """
-
-@app.route('/success')
-def success():
-    tid = request.args.get('tid', '')
-    order = session.get(tid, {})
-    name = order.get('name', 'Customer')
-    msg = order.get('msg', '')
-
     encoded_message = urllib.parse.quote(msg)
     wa_url = f"https://wa.me/27678081176?text={encoded_message}"
 
@@ -327,32 +229,87 @@ def success():
     <html>
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Payment Successful - Bamboo Bowls</title>
+        <title>Checkout - Bamboo Bowls</title>
         <style>
-            body {{ background:#000; color:#fff; font-family:sans-serif; text-align:center; padding:40px 20px; }}
-            .card {{ background:#111; padding:25px; border-radius:15px; border:1px solid #4caf50; margin:20px auto; max-width:500px; text-align:left; }}
-            .btn {{ display:block; max-width:400px; margin:20px auto; padding:20px; background:#4caf50; color:#fff; text-decoration:none; border-radius:15px; font-weight:bold; font-size:20px; text-align:center; }}
+            body {{ background:#000; color:#fff; font-family:sans-serif; text-align:center; padding:30px 20px; margin:0; }}
+            .container {{ max-width: 500px; margin: auto; }}
+            .card {{ background:#111; padding:25px; border-radius:15px; border:1px solid #333; margin:20px auto; text-align:left; }}
+            .total-box {{ background:#1a1a1a; border:2px solid #4caf50; border-radius:12px; padding:20px; margin:20px 0; text-align:center; }}
+            .total-amount {{ font-size: 42px; font-weight: bold; color: #4caf50; }}
+            .step-box {{ background:#111; border:1px solid #333; border-radius:12px; padding:20px; margin:15px 0; text-align:left; }}
+            .step-num {{ display:inline-block; background:#4caf50; color:#000; width:28px; height:28px; border-radius:50%; text-align:center; line-height:28px; font-weight:bold; margin-right:10px; }}
+            .btn-pay {{ display:block; padding:20px; background:#0BB3BF; color:#fff; text-decoration:none; border-radius:15px; font-weight:bold; font-size:20px; text-align:center; margin:10px 0; }}
+            .btn-wa {{ display:block; padding:20px; background:#25D366; color:#fff; text-decoration:none; border-radius:15px; font-weight:bold; font-size:18px; text-align:center; margin:10px 0; opacity:0.4; pointer-events:none; cursor:not-allowed; }}
+            .btn-wa.unlocked {{ opacity:1; pointer-events:auto; cursor:pointer; }}
+            .lock-msg {{ color:#888; font-size:13px; margin:5px 0 15px 0; }}
+            .checkbox-row {{ display:flex; align-items:center; gap:12px; background:#1a1a1a; padding:15px; border-radius:10px; margin:15px 0; cursor:pointer; border:1px solid #333; }}
+            .checkbox-row input {{ transform:scale(1.5); }}
+            .checkbox-row label {{ cursor:pointer; color:#ccc; font-size:15px; }}
         </style>
     </head>
     <body>
-        <div style="font-size:60px;">✅</div>
-        <h1 style="color:#4caf50;">Payment Successful!</h1>
-        <p style="color:#aaa;">Thank you {name}! Now send us your order on WhatsApp and we'll get cooking! 🌿</p>
-        <div class="card">
-            <pre style="white-space: pre-wrap; color:#ccc; font-size:14px;">{msg}</pre>
+        <div class="container">
+            <h1 style="color:#4caf50;">🌿 Your Order</h1>
+            <p style="color:#aaa;">Hi <strong>{name}</strong>, please review and pay below.</p>
+
+            <div class="card">
+                <pre style="white-space:pre-wrap; color:#ccc; font-size:13px; margin:0;">{msg}</pre>
+            </div>
+
+            <div class="total-box">
+                <div style="color:#aaa; margin-bottom:5px;">Amount to Pay</div>
+                <div class="total-amount">{total}</div>
+            </div>
+
+            <div class="step-box">
+                <p style="margin:0 0 15px 0; color:#fff;"><span class="step-num">1</span> Click below to pay on iKhokha</p>
+                <a href="{IKHOKHA_PAY_URL}" target="_blank" class="btn-pay" onclick="paidClicked()">💳 Pay {total} Now</a>
+            </div>
+
+            <div class="step-box">
+                <p style="margin:0 0 10px 0; color:#fff;"><span class="step-num">2</span> Confirm you have paid</p>
+                <div class="checkbox-row" onclick="togglePaid()">
+                    <input type="checkbox" id="paidCheck" onchange="togglePaid()">
+                    <label for="paidCheck">✅ I have successfully paid {total}</label>
+                </div>
+            </div>
+
+            <div class="step-box">
+                <p style="margin:0 0 5px 0; color:#fff;"><span class="step-num">3</span> Send your order via WhatsApp</p>
+                <p class="lock-msg" id="lockMsg">⬆️ Please confirm payment first</p>
+                <a href="{wa_url}" id="waBtn" class="btn-wa">📲 Send Order via WhatsApp</a>
+            </div>
+
+            <p style="margin-top:20px;"><a href="/" style="color:#888;">← Change my order</a></p>
         </div>
-        <a href="{wa_url}" class="btn">SEND ORDER VIA WHATSAPP ➔</a>
-        <p style="margin-top:20px;"><a href="/" style="color:#888;">← Back to menu</a></p>
+
+        <script>
+            function paidClicked() {{
+                // Small delay then scroll to step 2
+                setTimeout(() => {{
+                    document.getElementById('paidCheck').scrollIntoView({{behavior:'smooth', block:'center'}});
+                }}, 1500);
+            }}
+
+            function togglePaid() {{
+                const checked = document.getElementById('paidCheck').checked;
+                const waBtn = document.getElementById('waBtn');
+                const lockMsg = document.getElementById('lockMsg');
+                if (checked) {{
+                    waBtn.classList.add('unlocked');
+                    lockMsg.textContent = '✅ Payment confirmed! Send your order now.';
+                    lockMsg.style.color = '#4caf50';
+                    waBtn.scrollIntoView({{behavior:'smooth', block:'center'}});
+                }} else {{
+                    waBtn.classList.remove('unlocked');
+                    lockMsg.textContent = '⬆️ Please confirm payment first';
+                    lockMsg.style.color = '#888';
+                }}
+            }}
+        </script>
     </body>
     </html>
     """
-
-@app.route('/callback', methods=['POST'])
-def callback():
-    # iKhokha webhook - just log it for now
-    data = request.get_json()
-    print(f"iKhokha callback received: {data}")
-    return '', 200
 
 @app.route('/failed')
 def failed():
