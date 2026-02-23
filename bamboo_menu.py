@@ -53,15 +53,13 @@ def create_ikhokha_payment(amount_rands, transaction_id, description):
         }
     }
 
-    request_body_str = json.dumps(payload, separators=(',', ':'))
+    request_body_str = json.dumps(payload)
 
-    # Build signature exactly as per iKhokha docs:
+    # Build signature exactly as per iKhokha Python example:
     # IK-SIGN = hash_hmac("sha256", path + requestBody, AppSecret)
-    # path = /public-api/v1/api/payment
     api_path = "/public-api/v1/api/payment"
-
-    # Escape the payload the same way iKhokha's Python example does
     payload_to_sign = api_path + request_body_str
+    # Escape quotes and remove spaces after colons/commas as per iKhokha docs
     payload_to_sign = payload_to_sign.replace('"', '\\"').replace(': ', ':').replace(', ', ',')
 
     signature = hmac.new(
@@ -80,7 +78,6 @@ def create_ikhokha_payment(amount_rands, transaction_id, description):
     print(f"iKhokha response status: {response.status_code}")
     print(f"iKhokha response body: {response.text}")
     return response.json()
-
 @app.route('/', methods=['GET', 'POST'])
 def home():
     if request.method == 'POST':
@@ -137,7 +134,9 @@ def home():
             else:
                 print(f"No paylinkUrl in response: {result}")
         except Exception as e:
+            import traceback
             print(f"iKhokha API error: {e}")
+            print(traceback.format_exc())
 
         # Fallback to WhatsApp if payment link fails
         encoded_message = urllib.parse.quote(full_msg)
