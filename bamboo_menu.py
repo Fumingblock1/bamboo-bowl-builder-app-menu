@@ -9,12 +9,12 @@ app.secret_key = os.environ.get("FLASK_SECRET", "bamboo-bowls-secret-2024")
 IKHOKHA_PAY_URL = "https://pay.ikhokha.com/bamboo-bowls/buy/bamboobowls"
 
 signature_bowls = [
-    {"name": "Lemon Peri-Peri Calamari on Forbidden Rice", "price": 94.90},
-    {"name": "Thai Green Veg Bowl on Quinoa", "price": 71.90},
-    {"name": "Orange Duck & Red Veg on Noodles", "price": 99.90},
-    {"name": "Sweet and Sour Pichana Steak on Udon", "price": 89.90},
-    {"name": "Tonkatsu Tofu & Cashew Fried Rice", "price": 79.90},
-    {"name": "Satay Pork on Garlic Fried Rice", "price": 89.90},
+    {"name": "Lemon Peri-Peri Calamari on Forbidden Rice", "price": 94.90, "img": "Lemon Peri-Peri Calamari on Forbidden Rice.jpg.png"},
+    {"name": "Thai Green Veg Bowl on Quinoa", "price": 71.90, "img": "Thai Green Veg Bowl on Quinoa.jpg.png"},
+    {"name": "Orange Duck & Red Veg on Noodles", "price": 99.90, "img": "Orange Duck & Red Veg on Noodles.jpg.png"},
+    {"name": "Sweet and Sour Pichana Steak on Udon", "price": 89.90, "img": "psteak.png"},
+    {"name": "Tonkatsu Tofu & Cashew Fried Rice", "price": 79.90, "img": "Tonkatsu Tofu & Cashew Fried Rice.jpg.png"},
+    {"name": "Satay Pork on Garlic Fried Rice", "price": 89.90, "img": "Satay Pork on Garlic Fried Rice.jpg.png"},
 ]
 
 menu_steps = [
@@ -90,7 +90,7 @@ def home():
 
     sig_html = ""
     for sig in signature_bowls:
-        img_tag = f'<img src="/static/images/{sig["name"]}.jpg.png" alt="{sig["name"]}" class="sig-img" onerror="this.src=\'/static/images/{sig["name"]}.jpg.jpg\';this.onerror=function(){{this.style.display=\'none\'}}">'
+        img_tag = f'<img src="/static/images/{sig["img"]}" alt="{sig["name"]}" class="sig-img" onerror="this.style.display=\'none\'">'
         sig_html += f'''
         <label class="sig-label">
             <input type="checkbox" name="signature[]" value="{sig["name"]}">
