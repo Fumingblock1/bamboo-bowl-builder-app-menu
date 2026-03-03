@@ -222,7 +222,7 @@ def checkout():
     msg = order.get('msg', '')
     total = order.get('total', '')
     encoded_message = urllib.parse.quote(msg)
-    wa_url = f"https://wa.me/27678081176?text={encoded_message}"
+    wa_url = f"https://wa.me/27815752576?text={encoded_message}"
 
     return f"""
     <!DOCTYPE html>
@@ -330,3 +330,4 @@ if __name__ == '__main__':
     print("Starting Bamboo menu...")
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
+
